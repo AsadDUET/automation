@@ -62,9 +62,9 @@ def load_labels(label_file):
   return label
 
 def asad ():
-  file_name = "tf_files/flower_photos/circle/circle_2017-11-29-05-50-24-743.jpeg"
-  model_file = "tf_files/retrained_graph.pb"
-  label_file = "tf_files/retrained_labels.txt"
+  file_name = "photo.jpg"
+  model_file = "retrained_graph.pb"
+  label_file = "retrained_labels.txt"
   input_height = 224
   input_width = 224
   input_mean = 128
@@ -106,7 +106,7 @@ def asad ():
   graph = load_graph(model_file)
   with tf.Session(graph=graph) as sess:
       for i in range(6):
-          file_name = "tf_files/flower_photos/1 ("+str(i)+").jpeg"
+          file_name = "photo.jpg"
           t = read_tensor_from_image_file(file_name,
                                           input_height=input_height,
                                           input_width=input_width,
