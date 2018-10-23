@@ -22,6 +22,89 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from picamera import PiCamera
+camera=PiCamera()
+
+camera.resolution=(224,224)
+camera.start_preview(alpha=200)
+import RPi.GPIO as GPIO
+import time
+
+GPIO.setmode(GPIO.BCM)
+
+class s_motor(object):
+	def __init__(self,a1,a2,b1,b2,delay):
+		self.a1=a1
+		self.a2=a2
+		self.b1=b1
+		self.b2=b2
+		self.delay=delay
+		GPIO.setup(self.a1,GPIO.OUT)
+		GPIO.setup(self.a2,GPIO.OUT)
+		GPIO.setup(self.b1,GPIO.OUT)
+		GPIO.setup(self.b2,GPIO.OUT)
+		self.set_step(0,0,0,0)
+	def forward(self,steps):
+		for i in range(0,steps):
+			self.set_step(1,0,1,0)
+			time.sleep(self.delay)
+			self.set_step(0,1,1,0)
+			time.sleep(self.delay)
+			self.set_step(0,1,0,1)
+			time.sleep(self.delay)
+			self.set_step(1,0,0,1)
+			time.sleep(self.delay)
+
+	def backward(self,steps):
+		for i in range(0,steps):
+			self.set_step(1,0,0,1)
+			time.sleep(self.delay)
+			self.set_step(0,1,0,1)
+			time.sleep(self.delay)
+			self.set_step(0,1,1,0)
+			time.sleep(self.delay)
+			self.set_step(1,0,1,0)
+			time.sleep(self.delay)
+	def set_step(self,a1,a2,b1,b2):
+		GPIO.output(self.a1,a1)
+		GPIO.output(self.a2,a2)
+		GPIO.output(self.b1,b1)
+		GPIO.output(self.b2,b2)
+
+
+
+#sonar_readings
+TRIG = 18
+ECHO = 16
+distance=15
+sonar_readings=[15,15,15,15,15]
+print ("Distance Measurement In Progress")
+GPIO.setup(TRIG,GPIO.OUT)
+GPIO.setup(ECHO,GPIO.IN)
+def read_sonar():
+        for i in range(5):
+            GPIO.output(TRIG, False)
+            print ("Waiting For Sensor To Settle" )
+            time.sleep(.05)
+            GPIO.output(TRIG, True)
+            time.sleep(0.00001)
+            GPIO.output(TRIG, False)
+            while GPIO.input(ECHO)==0:
+                pulse_start = time.time()
+            while GPIO.input(ECHO)==1:
+                pulse_end = time.time()
+            pulse_duration = pulse_end - pulse_start
+            distance = pulse_duration * 17150
+            distance = round(distance, 2)
+            if (distance>=3 and distance<=28):
+                sonar_readings[i]=distance
+            else:
+                pass
+        distance=sum(sonar_readings)/len(sonar_readings)
+        print ("Distance:",distance,"cm")
+
+
+
 
 def load_graph(model_file):
   graph = tf.Graph()
@@ -105,29 +188,103 @@ def asad ():
 
   graph = load_graph(model_file)
   with tf.Session(graph=graph) as sess:
-      for i in range(6):
-          file_name = "photo.jpg"
-          t = read_tensor_from_image_file(file_name,
-                                          input_height=input_height,
-                                          input_width=input_width,
-                                          input_mean=input_mean,
-                                          input_std=input_std)
-        
-          input_name = "import/" + input_layer
-          output_name = "import/" + output_layer
-          input_operation = graph.get_operation_by_name(input_name);
-          output_operation = graph.get_operation_by_name(output_name);
+      distance=15
+      while True:
+          if (distance>3 and distance<14):
+              time.sleep(2)
+              camera.capture("photo.jpg",use_video_port=True)
+              print("capturing")
+              t = read_tensor_from_image_file(file_name,
+                                              input_height=input_height,
+                                              input_width=input_width,
+                                              input_mean=input_mean,
+                                              input_std=input_std)
 
-  
-      
-          results = sess.run(output_operation.outputs[0],
-                      {input_operation.outputs[0]: t})
-          results = np.squeeze(results)
-
-          top_k = results.argsort()[-5:][::-1]
-          labels = load_labels(label_file)
-          print(labels[top_k[0]], results[top_k[0]])
+              input_name = "import/" + input_layer
+              output_name = "import/" + output_layer
+              input_operation = graph.get_operation_by_name(input_name);
+              output_operation = graph.get_operation_by_name(output_name);
 
 
+
+              results = sess.run(output_operation.outputs[0],
+                          {input_operation.outputs[0]: t})
+              results = np.squeeze(results)
+
+              top_k = results.argsort()[-5:][::-1]
+              labels = load_labels(label_file)
+              print(labels[top_k[0]], results[top_k[0]])
+
+
+
+
+              if (top_k[0]==0):
+                  mh.backward(150)
+                  ma.forward(60)
+                  mb.backward(50)
+                  mh.forward(150)
+                  mb.forward(50)
+                  ma.backward(60)
+
+              if (top_k[0]==1):
+                  mh.backward(150)
+                  ma.forward(60)
+                  mb.backward(100)
+                  mh.forward(150)
+                  mb.forward(100)
+                  ma.backward(60)
+
+              if (top_k[0]==2):
+                  mh.backward(150)
+                  ma.forward(60)
+                  mb.backward(75)
+                  mh.forward(150)
+                  mb.forward(75)
+                  ma.backward(60)
+              for i in range(5):
+                  GPIO.output(TRIG, False)
+                  print ("Waiting For Sensor To Settle" )
+                  time.sleep(.05)
+                  GPIO.output(TRIG, True)
+                  time.sleep(0.00001)
+                  GPIO.output(TRIG, False)
+                  while GPIO.input(ECHO)==0:
+                      pulse_start = time.time()
+                  while GPIO.input(ECHO)==1:
+                      pulse_end = time.time()
+                  pulse_duration = pulse_end - pulse_start
+                  distance = pulse_duration * 17150
+                  distance = round(distance, 2)
+                  if (distance>=3 and distance<=28):
+                      sonar_readings[i]=distance
+                  else:
+                      pass
+              distance=sum(sonar_readings)/len(sonar_readings)
+              print ("Distance:",distance,"cm")
+          else:
+              for i in range(5):
+                  GPIO.output(TRIG, False)
+                  print ("Waiting For Sensor To Settle" )
+                  time.sleep(.05)
+                  GPIO.output(TRIG, True)
+                  time.sleep(0.00001)
+                  GPIO.output(TRIG, False)
+                  while GPIO.input(ECHO)==0:
+                      pulse_start = time.time()
+                  while GPIO.input(ECHO)==1:
+                      pulse_end = time.time()
+                  pulse_duration = pulse_end - pulse_start
+                  distance = pulse_duration * 17150
+                  distance = round(distance, 2)
+                  if (distance>=3 and distance<=28):
+                      sonar_readings[i]=distance
+                  else:
+                      pass
+              distance=sum(sonar_readings)/len(sonar_readings)
+              print ("Distance:",distance,"cm")
+
+
+mb=s_motor(6,13,19,26,.05)
+mh=s_motor(27,22,10,9,.01)
+ma=s_motor(2,3,4,17,.03)
 asad()
-
