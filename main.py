@@ -144,7 +144,7 @@ def load_labels(label_file):
     label.append(l.rstrip())
   return label
 
-def asad ():
+def run_machine ():
   file_name = "photo.jpg"
   model_file = "retrained_graph.pb"
   label_file = "retrained_labels.txt"
@@ -287,4 +287,4 @@ def asad ():
 mb=s_motor(6,13,19,26,.05)
 mh=s_motor(27,22,10,9,.01)
 ma=s_motor(2,3,4,17,.03)
-asad()
+run_machine()
